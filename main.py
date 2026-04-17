@@ -6,6 +6,7 @@ from PIL import Image
 import os
 import glob
 import subprocess
+import argparse
 
 
 def connect_device():
@@ -128,18 +129,8 @@ def install_apk_files(apk_folder_path):
     return success_count
 
 
-def main():
-    """主函数"""
-    print("正在连接Android设备...")
-    device = connect_device()
-    print("设备连接成功!")
-
-    info = get_device_info(device)
-    print_device_info(info)
-
-    screenshot_file = take_screenshot()
-
-    # 安装最新APK文件夹中的所有APK文件
+def install_latest():
+    """安装最新版本的APK"""
     apk_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "APK file")
     latest_apk_folder = get_latest_apk_folder(apk_base_path)
 
@@ -149,9 +140,52 @@ def main():
         success_count = install_apk_files(latest_apk_folder)
         print("-" * 40)
         print(f"APK安装完成: {success_count}/{len(glob.glob(os.path.join(latest_apk_folder, '*.apk')))} 成功")
+    else:
+        print("未找到可安装的APK文件夹")
 
-    print("\n操作完成!")
+
+def main():
+    """主函数"""
+    parser = argparse.ArgumentParser(description='AndroidAuto - Android设备自动化测试工具')
+    parser.add_argument('--info', action='store_true', help='获取设备信息')
+    parser.add_argument('--screenshot', nargs='?', const='screen.png', help='截取屏幕 (可选: 指定文件名)')
+    parser.add_argument('--install', action='store_true', help='安装最新版本APK')
+    parser.add_argument('--all', action='store_true', help='运行所有功能')
+
+    args = parser.parse_args()
+
+    # 如果没有任何参数，显示帮助
+    if len(sys.argv) == 1:
+        parser.print_help()
+        print("\n示例:")
+        print("  python main.py --info          # 获取设备信息")
+        print("  python main.py --screenshot    # 截取屏幕")
+        print("  python main.py --install       # 安装APK")
+        print("  python main.py --all           # 运行所有功能")
+        return
+
+    # 处理各功能
+    if args.info or args.all:
+        print("正在连接Android设备...")
+        device = connect_device()
+        print("设备连接成功!")
+        info = get_device_info(device)
+        print_device_info(info)
+        print()
+
+    if args.screenshot or args.all:
+        filename = args.screenshot if args.screenshot else "screen.png"
+        take_screenshot(filename)
+        print()
+
+    if args.install or args.all:
+        install_latest()
+        print()
+
+    if args.all:
+        print("操作完成!")
 
 
 if __name__ == "__main__":
+    import sys
     main()
