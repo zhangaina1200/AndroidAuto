@@ -104,6 +104,103 @@ python main.py --help           # Show help message
 | `--screenshot` | Capture device screen (default filename: screen.png) |
 | `--install` | Install all APKs from the latest version folder |
 | `--all` | Execute all functions (info, screenshot, install) |
+| `--run <file>` | Run YAML configuration file |
+
+---
+
+### YAML Automation
+
+Write automation scripts in YAML format and execute them:
+
+```bash
+python main.py --run test.yaml
+```
+
+**Example YAML file:**
+
+```yaml
+name: "Example Script"
+devices:
+  # serial: "device_serial"  # Optional
+
+steps:
+  - action: launch_app
+    package: com.sportstracker
+
+  - action: wait
+    text: "开始运动"
+    timeout: 10
+
+  - action: tap
+    text: "开始运动"
+
+  - action: screenshot
+    filename: "result.png"
+```
+
+#### Supported Actions
+
+**App Management:**
+| Action | Parameters |
+|--------|------------|
+| `launch_app` | `package` |
+| `stop_app` | `package` |
+
+**Touch Operations:**
+| Action | Parameters |
+|--------|------------|
+| `tap` | `x, y` or `text` or `resource_id` or `class_name` |
+| `double_tap` | `x, y` |
+| `long_press` | `x, y` or `text` or `resource_id`, `duration` |
+| `swipe` | `x1, y1, x2, y2, duration` |
+| `swipe_up` | `distance` |
+| `swipe_down` | `distance` |
+
+**Text Input:**
+| Action | Parameters |
+|--------|------------|
+| `input_text` | `text`, `text_match` or `resource_id`, `clear_first` |
+| `clear_text` | `text` or `resource_id` |
+
+**Key Operations:**
+| Action | Parameters |
+|--------|------------|
+| `press_key` | `key` (back/home/power/volume_up/volume_down) |
+| `press_back` | - |
+| `press_home` | - |
+| `press_power` | - |
+
+**Wait Operations:**
+| Action | Parameters |
+|--------|------------|
+| `wait` | `text` or `resource_id` or `class_name`, `timeout`, `exists` |
+| `wait_time` | `seconds` |
+
+**Screenshot:**
+| Action | Parameters |
+|--------|------------|
+| `screenshot` | `filename` |
+
+**Scroll Operations:**
+| Action | Parameters |
+|--------|------------|
+| `scroll_up` | - |
+| `scroll_down` | - |
+| `scroll_to_text` | `text`, `max_swipe` |
+| `scroll_to_resource_id` | `resource_id`, `max_swipe` |
+
+**Assertions:**
+| Action | Parameters |
+|--------|------------|
+| `assert_exists` | `text` or `resource_id` or `class_name` |
+| `assert_text` | `expected`, `text` or `resource_id` |
+
+#### Error Handling
+
+When a step fails, the runner will:
+1. Take a screenshot
+2. Save error log to `run_YYYYMMDD_HHMMSS.log`
+3. Continue executing remaining steps
 
 ### Connect Device
 
@@ -160,10 +257,15 @@ if apk_folder:
 ```
 AndroidAuto/
 ├── main.py              # Main entry point
+├── operations.py        # Core operation functions
+├── runner.py            # YAML configuration runner
+├── download_apk.py      # APK download tool
 ├── requirements.txt     # Python dependencies
 ├── .gitignore           # Git ignore rules
 ├── README.md            # This file
 ├── LICENSE              # MIT License
+├── examples/            # Example YAML scripts
+│   └── example_*.yaml
 └── APK file/            # APK files directory
     └── <version>/
         ├── app.apk

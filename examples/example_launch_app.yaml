@@ -1,0 +1,27 @@
+# Example: Launch App and Tap Button
+name: "Launch App Example"
+devices:
+  # serial: "your_device_serial"  # Optional, auto-detect if omitted
+
+steps:
+  # Launch application
+  - action: launch_app
+    package: com.sportstracker
+
+  # Wait for app to load
+  - action: wait
+    text: "开始运动"
+    timeout: 10
+
+  # Tap button by text
+  - action: tap
+    text: "开始运动"
+
+  # Wait for next screen
+  - action: wait
+    text: "运动中"
+    timeout: 15
+
+  # Take screenshot
+  - action: screenshot
+    filename: "sport_started.png"

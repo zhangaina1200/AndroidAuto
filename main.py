@@ -151,6 +151,7 @@ def main():
     parser.add_argument('--screenshot', nargs='?', const='screen.png', help='截取屏幕 (可选: 指定文件名)')
     parser.add_argument('--install', action='store_true', help='安装最新版本APK')
     parser.add_argument('--all', action='store_true', help='运行所有功能')
+    parser.add_argument('--run', metavar='FILE', help='运行 YAML 配置文件')
 
     args = parser.parse_args()
 
@@ -162,6 +163,14 @@ def main():
         print("  python main.py --screenshot    # 截取屏幕")
         print("  python main.py --install       # 安装APK")
         print("  python main.py --all           # 运行所有功能")
+        print("  python main.py --run test.yaml # 运行 YAML 配置")
+        return
+
+    # 处理 YAML 运行
+    if args.run:
+        from runner import Runner
+        runner = Runner(args.run)
+        runner.run()
         return
 
     # 处理各功能
