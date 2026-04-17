@@ -87,17 +87,23 @@ The tool will automatically detect and install APKs from the most recently modif
 
 ## 🚀 Usage
 
-### Basic Usage
+### CLI Options
 
 ```bash
-python main.py
+python main.py --info          # Get device info only
+python main.py --screenshot    # Take screenshot only
+python main.py --screenshot custom.png  # Take screenshot with custom filename
+python main.py --install       # Install latest APK only
+python main.py --all            # Run all functions
+python main.py --help           # Show help message
 ```
 
-This will:
-1. Connect to the USB device
-2. Display device information
-3. Take a screenshot
-4. Install all APKs from the latest folder
+| Option | Description |
+|--------|-------------|
+| `--info` | Retrieve and display device information |
+| `--screenshot` | Capture device screen (default filename: screen.png) |
+| `--install` | Install all APKs from the latest version folder |
+| `--all` | Execute all functions (info, screenshot, install) |
 
 ### Connect Device
 
