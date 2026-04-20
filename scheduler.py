@@ -15,7 +15,7 @@ import random
 import sqlite3
 from datetime import datetime, timedelta
 from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.date import DateTrigger
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 import operations as ops
 
@@ -78,6 +78,30 @@ class ScheduleConfig:
     def get_time_windows(self):
         """获取所有时间窗口"""
         return self.time_windows
+
+    def get_next_window_start(self):
+        """获取下一个窗口的开始时间点"""
+        now = datetime.now()
+        triggers = []
+
+        for window in self.time_windows:
+            start = window.get('start', '09:00')
+            start_h, start_m = self._parse_time(start)
+            triggers.append((start_h, start_m, window))
+
+        # 按时间排序
+        triggers.sort(key=lambda x: x[0] * 60 + x[1])
+
+        # 找下一个未过的窗口开始时间
+        for start_h, start_m, window in triggers:
+            candidate = now.replace(hour=start_h, minute=start_m, second=0, microsecond=0)
+            if candidate > now:
+                return candidate
+
+        # 所有窗口已过，安排明天第一个窗口
+        first = triggers[0]
+        tomorrow = now + timedelta(days=1)
+        return tomorrow.replace(hour=first[0], minute=first[1], second=0, microsecond=0)
 
     def is_within_time_window(self):
         """检查当前时间是否在配置的时间窗口内"""
@@ -387,38 +411,75 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
 
     scheduler = BlockingScheduler(jobstores=jobstores)
 
-    # 根据配置的多个时间窗口设置 CronTrigger
-    hour_ranges = config.get_time_window_hours()
-
-    # 构建小时列表：例如 [8,9,18,19]
-    # 每个窗口会触发整点执行，实际窗口检查在 scheduled_job 中进行
-    all_hours = []
-    for start_h, end_h in hour_ranges:
-        all_hours.extend(range(start_h, end_h + 1))
-
-    # 去重并排序
-    all_hours = sorted(set(all_hours))
-
-    hours_str = ','.join(str(h) for h in all_hours)
-
-    # 每小时整点触发，由 scheduled_job 中的 is_within_time_window() 检查实际窗口
-    trigger = CronTrigger(day_of_week='mon-fri', hour=hours_str, minute=0)
-
     # 显示所有时间窗口
     window_descriptions = []
     for window in config.time_windows:
         window_descriptions.append(f"{window.get('start', '09:00')}~{window.get('end', '11:30')}")
 
     print(f"[Scheduler] 时间窗口: {', '.join(window_descriptions)}")
-    print(f"[Scheduler] Cron trigger: 每小时整点触发 ({hours_str}:00)")
 
-    scheduler.add_job(
-        launcher.scheduled_job,
-        trigger,
-        id='scheduled_app_launch',
-        name='定时启动 App',
-        replace_existing=True
-    )
+    def schedule_next_window():
+        """安排下一个窗口的执行"""
+        now = datetime.now()
+
+        for window in config.time_windows:
+            start = window.get('start', '09:00')
+            end = window.get('end', '11:30')
+            start_h, start_m = config._parse_time(start)
+            end_h, end_m = config._parse_time(end)
+
+            start_total = start_h * 60 + start_m
+            end_total = end_h * 60 + end_m
+            now_total = now.hour * 60 + now.minute
+
+            # 检查是否在窗口内（窗口开始后、结束前）
+            if start_total <= now_total <= end_total:
+                # 在窗口内，随机选择执行时间
+                random_minutes = random.randint(start_total, end_total)
+                exec_hour = random_minutes // 60
+                exec_minute = random_minutes % 60
+
+                # 如果随机时间已过，选择窗口开始后但不太早的时间
+                if exec_hour * 60 + exec_minute <= now_total:
+                    exec_hour = now.hour
+                    exec_minute = now.minute + 2 if now.minute < 58 else 59
+
+                exec_time = now.replace(hour=exec_hour, minute=exec_minute, second=0, microsecond=0)
+                trigger = DateTrigger(run_date=exec_time)
+
+                scheduler.add_job(
+                    launcher.scheduled_job,
+                    trigger,
+                    id='scheduled_app_launch',
+                    name='定时启动 App',
+                    replace_existing=True
+                )
+                print(f"[Scheduler] 已安排执行时间: {exec_time.strftime('%H:%M')}")
+                return
+
+        # 不在任何窗口内，安排下一个窗口的起始时间
+        next_time = config.get_next_window_start()
+        trigger = DateTrigger(run_date=next_time)
+
+        scheduler.add_job(
+            launcher.scheduled_job,
+            trigger,
+            id='scheduled_app_launch',
+            name='定时启动 App',
+            replace_existing=True
+        )
+        print(f"[Scheduler] 已安排下一个窗口开始: {next_time.strftime('%H:%M')}")
+
+    def wrap_scheduled_job():
+        """包装的 scheduled_job，执行完成后自动安排下一个"""
+        # 执行实际的 job
+        launcher.scheduled_job()
+
+        # 执行完成后，安排下一个窗口
+        schedule_next_window()
+
+    # 初始安排
+    schedule_next_window()
 
     print("[Scheduler] 调度器已启动")
     print(f"[Scheduler] 执行周期: 周一到周五 {', '.join(window_descriptions)}")
