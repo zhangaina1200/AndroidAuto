@@ -1,0 +1,24 @@
+# AndroidAuto 定时任务配置文件
+# 定时启动指定 App
+
+# 时间窗口配置（24小时制，HH:MM 格式）
+time_window:
+  start: "09:00"   # 窗口开始时间
+  end: "11:30"     # 窗口结束时间
+
+# 目标 App 配置
+target:
+  app_package: "com.ss.android.lark"  # 要启动的 App 包名
+
+# 设备配置（可选，不填则自动检测）
+device:
+  serial: null   # 设备序列号，null 表示自动检测第一个连接的设备
+
+# 重试配置
+retry:
+  max_attempts: 5      # 最大重试次数
+  interval_seconds: 10  # 重试间隔（秒）
+
+# 日志配置
+logging:
+  dir: "schedules"     # 日志目录（相对于项目根目录）

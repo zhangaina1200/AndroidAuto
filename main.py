@@ -152,6 +152,8 @@ def main():
     parser.add_argument('--install', action='store_true', help='安装最新版本APK')
     parser.add_argument('--all', action='store_true', help='运行所有功能')
     parser.add_argument('--run', metavar='FILE', help='运行 YAML 配置文件')
+    parser.add_argument('--schedule', action='store_true', help='启动定时任务调度器')
+    parser.add_argument('--config', metavar='FILE', help='定时任务配置文件 (默认: config/schedule_config.yaml)')
 
     args = parser.parse_args()
 
@@ -159,11 +161,12 @@ def main():
     if len(sys.argv) == 1:
         parser.print_help()
         print("\n示例:")
-        print("  python main.py --info          # 获取设备信息")
-        print("  python main.py --screenshot    # 截取屏幕")
-        print("  python main.py --install       # 安装APK")
-        print("  python main.py --all           # 运行所有功能")
-        print("  python main.py --run test.yaml # 运行 YAML 配置")
+        print("  python main.py --info              # 获取设备信息")
+        print("  python main.py --screenshot        # 截取屏幕")
+        print("  python main.py --install          # 安装APK")
+        print("  python main.py --all              # 运行所有功能")
+        print("  python main.py --run test.yaml     # 运行 YAML 配置")
+        print("  python main.py --schedule         # 启动定时任务")
         return
 
     # 处理 YAML 运行
@@ -171,6 +174,13 @@ def main():
         from runner import Runner
         runner = Runner(args.run)
         runner.run()
+        return
+
+    # 处理定时任务调度
+    if args.schedule:
+        from scheduler import start_scheduler
+        config_path = args.config or 'config/schedule_config.yaml'
+        start_scheduler(config_path)
         return
 
     # 处理各功能

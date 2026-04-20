@@ -7,3 +7,7 @@ __pycache__/
 screenshots/
 *.log
 test_*.yaml
+
+# Scheduler output (auto-generated)
+schedules/
+*.db

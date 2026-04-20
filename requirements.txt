@@ -1,3 +1,6 @@
 uiautomator2
 pillow
 adbutils
+PyYAML
+APScheduler
+SQLAlchemy
