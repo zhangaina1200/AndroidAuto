@@ -79,6 +79,28 @@ class ScheduleConfig:
         """获取所有时间窗口"""
         return self.time_windows
 
+    def is_within_time_window(self):
+        """检查当前时间是否在配置的时间窗口内"""
+        now = datetime.now()
+        current_hour = now.hour
+        current_minute = now.minute
+
+        for window in self.time_windows:
+            start = window.get('start', '09:00')
+            end = window.get('end', '11:30')
+            start_h, start_m = self._parse_time(start)
+            end_h, end_m = self._parse_time(end)
+
+            # 计算当前时间在窗口中的位置
+            current_total_minutes = current_hour * 60 + current_minute
+            start_total_minutes = start_h * 60 + start_m
+            end_total_minutes = end_h * 60 + end_m
+
+            if start_total_minutes <= current_total_minutes <= end_total_minutes:
+                return True
+
+        return False
+
     def generate_random_execution_time(self, window_index=0):
         """在指定时间窗口内生成随机执行时间点"""
         if window_index >= len(self.time_windows):
@@ -123,6 +145,17 @@ class ScheduleConfig:
             end_h, _ = self._parse_time(end)
             hour_ranges.append((start_h, end_h))
         return hour_ranges
+
+    def get_time_window_minutes(self):
+        """获取所有时间窗口的分钟范围列表"""
+        minute_ranges = []
+        for window in self.time_windows:
+            start = window.get('start', '09:00')
+            end = window.get('end', '11:30')
+            _, start_m = self._parse_time(start)
+            _, end_m = self._parse_time(end)
+            minute_ranges.append((start_m, end_m))
+        return minute_ranges
 
     def get_next_run_time(self):
         """获取下一个可执行的时间点（跳过周末）"""
@@ -249,6 +282,13 @@ class ScheduledAppLauncher:
             if self.verify_app_launched(self.config.target_app):
                 result = "SUCCESS"
                 print(f"[Scheduler] App 启动验证成功")
+
+                # 等待10秒后关闭 App
+                print(f"[Scheduler] 等待10秒后关闭 App...")
+                time.sleep(10)
+                print(f"[Scheduler] 正在关闭 App: {self.config.target_app}")
+                ops.stop_app(self.device, self.config.target_app)
+                print(f"[Scheduler] App 已关闭")
             else:
                 error_msg = "App 启动后验证失败"
                 raise Exception(error_msg)
@@ -280,6 +320,12 @@ class ScheduledAppLauncher:
 
         if self.config.is_weekend(datetime.now()):
             print(f"[Scheduler] 跳过周末执行")
+            return
+
+        # 检查是否在时间窗口内
+        if not self.config.is_within_time_window():
+            print(f"[Scheduler] 当前不在时间窗口内，跳过执行")
+            print(f"{'='*50}\n")
             return
 
         success = self.execute_launch(planned_time)
@@ -344,15 +390,18 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
     # 根据配置的多个时间窗口设置 CronTrigger
     hour_ranges = config.get_time_window_hours()
 
-    # 构建小时列表：例如 [9,10,11,14,15,16,17]
+    # 构建小时列表：例如 [8,9,18,19]
+    # 每个窗口会触发整点执行，实际窗口检查在 scheduled_job 中进行
     all_hours = []
     for start_h, end_h in hour_ranges:
         all_hours.extend(range(start_h, end_h + 1))
 
     # 去重并排序
     all_hours = sorted(set(all_hours))
+
     hours_str = ','.join(str(h) for h in all_hours)
 
+    # 每小时整点触发，由 scheduled_job 中的 is_within_time_window() 检查实际窗口
     trigger = CronTrigger(day_of_week='mon-fri', hour=hours_str, minute=0)
 
     # 显示所有时间窗口
@@ -361,7 +410,7 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
         window_descriptions.append(f"{window.get('start', '09:00')}~{window.get('end', '11:30')}")
 
     print(f"[Scheduler] 时间窗口: {', '.join(window_descriptions)}")
-    print(f"[Scheduler] Cron trigger hours: {hours_str}")
+    print(f"[Scheduler] Cron trigger: 每小时整点触发 ({hours_str}:00)")
 
     scheduler.add_job(
         launcher.scheduled_job,
