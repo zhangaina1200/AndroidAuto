@@ -26,6 +26,17 @@ class Runner:
         self.device = None
         self.step_results = []
         self.logs = []
+        self.output_dir = self._get_output_dir()
+
+    def _get_output_dir(self):
+        """Get structured output directory: screenshots/YYYY-MM-DD/app_name/"""
+        date_str = time.strftime("%Y-%m-%d")
+        # Determine app name from config or use 'general'
+        app_name = self.config.get('app', 'general')
+        base_dir = os.path.dirname(os.path.abspath(self.config.get('_file_path', __file__)))
+        output_dir = os.path.join(base_dir, "screenshots", date_str, app_name)
+        os.makedirs(output_dir, exist_ok=True)
+        return output_dir
 
     def connect_device(self):
         """Connect to device."""
@@ -44,9 +55,11 @@ class Runner:
         self.log(message, level="ERROR")
 
     def save_screenshot(self, filename):
-        """Save screenshot and add to logs."""
+        """Save screenshot to structured directory and add to logs."""
         if self.device:
-            path = ops.screenshot(self.device, filename)
+            # Use structured output directory
+            path = os.path.join(self.output_dir, filename)
+            ops.screenshot(self.device, path)
             self.log(f"Screenshot saved: {path}")
             return path
         return None
@@ -56,9 +69,13 @@ class Runner:
         self.error(f"Step failed: {step.get('action', 'unknown')}")
         self.error(f"Error: {str(e)}")
 
-        # Save screenshot
+        # Save screenshot to error subdirectory
+        error_dir = os.path.join(self.output_dir, "errors")
+        os.makedirs(error_dir, exist_ok=True)
         screenshot_name = f"error_{time.strftime('%Y%m%d_%H%M%S')}.png"
-        self.save_screenshot(screenshot_name)
+        error_path = os.path.join(error_dir, screenshot_name)
+        ops.screenshot(self.device, error_path)
+        self.log(f"Error screenshot saved: {error_path}")
 
         # Continue execution
         self.log("Continuing execution...")
@@ -162,7 +179,7 @@ class Runner:
 
             elif action == 'screenshot':
                 filename = step.get('filename', 'screen.png')
-                ops.screenshot(self.device, filename)
+                self.save_screenshot(filename)
                 return True
 
             elif action == 'scroll_up':
@@ -239,8 +256,9 @@ class Runner:
         return success_count, fail_count
 
     def save_log(self):
-        """Save execution log to file."""
-        log_dir = os.path.dirname(os.path.abspath(self.config.get('_file_path', 'run.log')))
+        """Save execution log to file in logs subdirectory."""
+        log_dir = os.path.join(os.path.dirname(os.path.abspath(self.config.get('_file_path', __file__))), "screenshots", time.strftime("%Y-%m-%d"), "logs")
+        os.makedirs(log_dir, exist_ok=True)
         log_path = os.path.join(log_dir, f"run_{time.strftime('%Y%m%d_%H%M%S')}.log")
 
         with open(log_path, 'w', encoding='utf-8') as f:
