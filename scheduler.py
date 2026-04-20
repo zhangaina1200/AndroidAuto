@@ -28,11 +28,13 @@ class ScheduleConfig:
         with open(config_path, 'r', encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
 
-        # 时间窗口配置
-        self.start_hour = self.config.get('time_window', {}).get('start', '09:00')
-        self.end_hour = self.config.get('time_window', {}).get('end', '11:30')
+        # 多时间窗口配置
+        self.time_windows = self.config.get('time_windows', [])
+        if not self.time_windows:
+            # 兼容旧配置格式
+            self.time_windows = [self.config.get('time_window', {})]
 
-        # 验证时间格式
+        # 验证所有时间窗口
         self._validate_time_config()
 
         # 目标配置
@@ -47,35 +49,50 @@ class ScheduleConfig:
         # 日志目录
         self.log_dir = self.config.get('logging', {}).get('dir', 'schedules')
 
+    def _parse_time(self, t):
+        """解析 HH:MM 格式时间"""
+        parts = t.split(':')
+        if len(parts) != 2:
+            raise ValueError(f"时间格式错误: {t}，期望 HH:MM")
+        return int(parts[0]), int(parts[1])
+
     def _validate_time_config(self):
         """验证时间配置格式"""
-        def parse_time(t):
-            parts = t.split(':')
-            if len(parts) != 2:
-                raise ValueError(f"时间格式错误: {t}，期望 HH:MM")
-            return int(parts[0]), int(parts[1])
+        for i, window in enumerate(self.time_windows):
+            start = window.get('start', '09:00')
+            end = window.get('end', '11:30')
 
-        start_h, start_m = parse_time(self.start_hour)
-        end_h, end_m = parse_time(self.end_hour)
+            start_h, start_m = self._parse_time(start)
+            end_h, end_m = self._parse_time(end)
 
-        if start_h < 0 or start_h > 23 or end_h < 0 or end_h > 23:
-            raise ValueError("小时必须在 0-23 之间")
-        if start_m < 0 or start_m > 59 or end_m < 0 or end_m > 59:
-            raise ValueError("分钟必须在 0-59 之间")
+            if start_h < 0 or start_h > 23 or end_h < 0 or end_h > 23:
+                raise ValueError(f"窗口{i+1}: 小时必须在 0-23 之间")
+            if start_m < 0 or start_m > 59 or end_m < 0 or end_m > 59:
+                raise ValueError(f"窗口{i+1}: 分钟必须在 0-59 之间")
+
+            start_minutes = start_h * 60 + start_m
+            end_minutes = end_h * 60 + end_m
+            if start_minutes >= end_minutes:
+                raise ValueError(f"窗口{i+1}: 开始时间 {start} 必须在结束时间 {end} 之前")
+
+    def get_time_windows(self):
+        """获取所有时间窗口"""
+        return self.time_windows
+
+    def generate_random_execution_time(self, window_index=0):
+        """在指定时间窗口内生成随机执行时间点"""
+        if window_index >= len(self.time_windows):
+            window_index = 0
+
+        window = self.time_windows[window_index]
+        start = window.get('start', '09:00')
+        end = window.get('end', '11:30')
+
+        start_h, start_m = self._parse_time(start)
+        end_h, end_m = self._parse_time(end)
 
         start_minutes = start_h * 60 + start_m
         end_minutes = end_h * 60 + end_m
-        if start_minutes >= end_minutes:
-            raise ValueError(f"开始时间 {self.start_hour} 必须在结束时间 {self.end_hour} 之前")
-
-    def generate_random_execution_time(self):
-        """在时间窗口内生成随机执行时间点"""
-        def parse_time(t):
-            parts = t.split(':')
-            return int(parts[0]) * 60 + int(parts[1])
-
-        start_minutes = parse_time(self.start_hour)
-        end_minutes = parse_time(self.end_hour)
 
         random_minutes = random.randint(start_minutes, end_minutes - 1)
         hours = random_minutes // 60
@@ -96,13 +113,16 @@ class ScheduleConfig:
         # TODO: 法定节假日检查（需要接入节假日API或数据库）
         return dt.weekday() >= 5  # 5=Saturday, 6=Sunday
 
-    def get_hour_range(self):
-        """获取时间窗口的小时范围，用于配置 CronTrigger"""
-        start_parts = self.start_hour.split(':')
-        end_parts = self.end_hour.split(':')
-        start_hour = int(start_parts[0])
-        end_hour = int(end_parts[0])
-        return start_hour, end_hour
+    def get_time_window_hours(self):
+        """获取所有时间窗口的小时范围列表"""
+        hour_ranges = []
+        for window in self.time_windows:
+            start = window.get('start', '09:00')
+            end = window.get('end', '11:30')
+            start_h, _ = self._parse_time(start)
+            end_h, _ = self._parse_time(end)
+            hour_ranges.append((start_h, end_h))
+        return hour_ranges
 
     def get_next_run_time(self):
         """获取下一个可执行的时间点（跳过周末）"""
@@ -273,7 +293,11 @@ class ScheduledAppLauncher:
         print("="*50)
         print(f"目标 App: {self.config.target_app}")
         print(f"设备序列号: {self.config.device_serial or '自动检测'}")
-        print(f"时间窗口: {self.config.start_hour} ~ {self.config.end_hour}")
+
+        window_descriptions = []
+        for window in self.config.time_windows:
+            window_descriptions.append(f"{window.get('start', '09:00')}~{window.get('end', '11:30')}")
+        print(f"时间窗口: {', '.join(window_descriptions)}")
         print(f"最大重试: {self.config.max_retries} 次")
         print(f"重试间隔: {self.config.retry_interval} 秒")
         print(f"日志目录: {self.config.log_dir}")
@@ -317,12 +341,27 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
 
     scheduler = BlockingScheduler(jobstores=jobstores)
 
-    # 根据配置的时间窗口设置 CronTrigger
-    start_hour, end_hour = config.get_hour_range()
-    trigger = CronTrigger(day_of_week='mon-fri', hour=f'{start_hour}-{end_hour}', minute=0)
+    # 根据配置的多个时间窗口设置 CronTrigger
+    hour_ranges = config.get_time_window_hours()
 
-    print(f"[Scheduler] 时间窗口: {config.start_hour} ~ {config.end_hour}")
-    print(f"[Scheduler] Cron trigger hours: {start_hour}-{end_hour}")
+    # 构建小时列表：例如 [9,10,11,14,15,16,17]
+    all_hours = []
+    for start_h, end_h in hour_ranges:
+        all_hours.extend(range(start_h, end_h + 1))
+
+    # 去重并排序
+    all_hours = sorted(set(all_hours))
+    hours_str = ','.join(str(h) for h in all_hours)
+
+    trigger = CronTrigger(day_of_week='mon-fri', hour=hours_str, minute=0)
+
+    # 显示所有时间窗口
+    window_descriptions = []
+    for window in config.time_windows:
+        window_descriptions.append(f"{window.get('start', '09:00')}~{window.get('end', '11:30')}")
+
+    print(f"[Scheduler] 时间窗口: {', '.join(window_descriptions)}")
+    print(f"[Scheduler] Cron trigger hours: {hours_str}")
 
     scheduler.add_job(
         launcher.scheduled_job,
@@ -333,7 +372,7 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
     )
 
     print("[Scheduler] 调度器已启动")
-    print(f"[Scheduler] 执行周期: 周一到周五 {config.start_hour}~{config.end_hour}")
+    print(f"[Scheduler] 执行周期: 周一到周五 {', '.join(window_descriptions)}")
     print("[Scheduler] 按 Ctrl+C 退出")
 
     try:
