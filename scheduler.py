@@ -307,9 +307,9 @@ class ScheduledAppLauncher:
                 result = "SUCCESS"
                 print(f"[Scheduler] App 启动验证成功")
 
-                # 等待10秒后关闭 App
-                print(f"[Scheduler] 等待10秒后关闭 App...")
-                time.sleep(10)
+                # 等待30秒后关闭 App
+                print(f"[Scheduler] 等待30秒后关闭 App...")
+                time.sleep(30)
                 print(f"[Scheduler] 正在关闭 App: {self.config.target_app}")
                 ops.stop_app(self.device, self.config.target_app)
                 print(f"[Scheduler] App 已关闭")
