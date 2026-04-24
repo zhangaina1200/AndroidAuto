@@ -23,16 +23,19 @@ import operations as ops
 class ScheduleConfig:
     """调度配置管理"""
 
+    # 默认时间窗口配置
+    DEFAULT_TIME_WINDOWS = [{'start': '09:00', 'end': '11:30'}]
+
     def __init__(self, config_path):
         import yaml
         with open(config_path, 'r', encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
 
         # 多时间窗口配置
-        self.time_windows = self.config.get('time_windows', [])
+        self.time_windows = self.config.get('time_windows', self.DEFAULT_TIME_WINDOWS)
         if not self.time_windows:
             # 兼容旧配置格式
-            self.time_windows = [self.config.get('time_window', {})]
+            self.time_windows = [self.config.get('time_window', self.DEFAULT_TIME_WINDOWS[0])]
 
         # 验证所有时间窗口
         self._validate_time_config()
@@ -59,8 +62,8 @@ class ScheduleConfig:
     def _validate_time_config(self):
         """验证时间配置格式"""
         for i, window in enumerate(self.time_windows):
-            start = window.get('start', '09:00')
-            end = window.get('end', '11:30')
+            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
 
             start_h, start_m = self._parse_time(start)
             end_h, end_m = self._parse_time(end)
@@ -85,7 +88,7 @@ class ScheduleConfig:
         triggers = []
 
         for window in self.time_windows:
-            start = window.get('start', '09:00')
+            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
             start_h, start_m = self._parse_time(start)
             triggers.append((start_h, start_m, window))
 
@@ -110,8 +113,8 @@ class ScheduleConfig:
         current_minute = now.minute
 
         for window in self.time_windows:
-            start = window.get('start', '09:00')
-            end = window.get('end', '11:30')
+            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
             start_h, start_m = self._parse_time(start)
             end_h, end_m = self._parse_time(end)
 
@@ -131,8 +134,8 @@ class ScheduleConfig:
             window_index = 0
 
         window = self.time_windows[window_index]
-        start = window.get('start', '09:00')
-        end = window.get('end', '11:30')
+        start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
+        end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
 
         start_h, start_m = self._parse_time(start)
         end_h, end_m = self._parse_time(end)
@@ -163,8 +166,8 @@ class ScheduleConfig:
         """获取所有时间窗口的小时范围列表"""
         hour_ranges = []
         for window in self.time_windows:
-            start = window.get('start', '09:00')
-            end = window.get('end', '11:30')
+            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
             start_h, _ = self._parse_time(start)
             end_h, _ = self._parse_time(end)
             hour_ranges.append((start_h, end_h))
@@ -174,8 +177,8 @@ class ScheduleConfig:
         """获取所有时间窗口的分钟范围列表"""
         minute_ranges = []
         for window in self.time_windows:
-            start = window.get('start', '09:00')
-            end = window.get('end', '11:30')
+            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
             _, start_m = self._parse_time(start)
             _, end_m = self._parse_time(end)
             minute_ranges.append((start_m, end_m))
@@ -258,21 +261,18 @@ class ScheduledAppLauncher:
 
     def connect_device(self):
         """连接设备，支持重试"""
-        for attempt in range(1, self.config.max_retries + 1):
-            try:
-                print(f"[Scheduler] 尝试连接设备 (尝试 {attempt}/{self.config.max_retries})...")
-                self.device = ops.connect(self.config.device_serial)
-                print(f"[Scheduler] 设备连接成功: {self.device.serial}")
-                return True
-            except Exception as e:
-                print(f"[Scheduler] 连接失败: {e}")
-                if attempt < self.config.max_retries:
-                    print(f"[Scheduler] {self.config.retry_interval}秒后重试...")
-                    time.sleep(self.config.retry_interval)
-                else:
-                    print(f"[Scheduler] 达到最大重试次数，放弃连接")
-                    return False
-        return False
+        try:
+            print(f"[Scheduler] 正在连接设备...")
+            self.device = ops.connect_with_retry(
+                self.config.device_serial,
+                self.config.max_retries,
+                self.config.retry_interval
+            )
+            print(f"[Scheduler] 设备连接成功: {self.device.serial}")
+            return True
+        except Exception as e:
+            print(f"[Scheduler] 设备连接失败: {e}")
+            return False
 
     def verify_app_launched(self, package, timeout=5):
         """验证 App 是否成功启动"""
@@ -366,7 +366,7 @@ class ScheduledAppLauncher:
 
         window_descriptions = []
         for window in self.config.time_windows:
-            window_descriptions.append(f"{window.get('start', '09:00')}~{window.get('end', '11:30')}")
+            window_descriptions.append(f"{window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])}~{window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])}")
         print(f"时间窗口: {', '.join(window_descriptions)}")
         print(f"最大重试: {self.config.max_retries} 次")
         print(f"重试间隔: {self.config.retry_interval} 秒")
@@ -414,7 +414,7 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
     # 显示所有时间窗口
     window_descriptions = []
     for window in config.time_windows:
-        window_descriptions.append(f"{window.get('start', '09:00')}~{window.get('end', '11:30')}")
+        window_descriptions.append(f"{window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])}~{window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])}")
 
     print(f"[Scheduler] 时间窗口: {', '.join(window_descriptions)}")
 
@@ -423,8 +423,8 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
         now = datetime.now()
 
         for window in config.time_windows:
-            start = window.get('start', '09:00')
-            end = window.get('end', '11:30')
+            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
             start_h, start_m = config._parse_time(start)
             end_h, end_m = config._parse_time(end)
 
