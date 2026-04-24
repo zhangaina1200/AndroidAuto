@@ -4,3 +4,5 @@ adbutils
 PyYAML
 APScheduler
 SQLAlchemy
+pytest
+pytest-mock

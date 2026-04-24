@@ -28,6 +28,32 @@ def connect(serial=None):
     return Device(serial)
 
 
+def connect_with_retry(serial=None, max_retries=3, retry_interval=5):
+    """
+    Connect to device with retry support.
+
+    Args:
+        serial: Device serial number, None for auto-detect
+        max_retries: Maximum retry attempts
+        retry_interval: Seconds to wait between retries
+
+    Returns:
+        Device: Device wrapper object
+    """
+    import time
+    for attempt in range(1, max_retries + 1):
+        try:
+            dev = Device(serial)
+            # Verify connection by getting device info
+            dev.device.info
+            return dev
+        except Exception as e:
+            if attempt < max_retries:
+                time.sleep(retry_interval)
+            else:
+                raise
+
+
 # ============ App Management ============
 
 def launch_app(device, package):

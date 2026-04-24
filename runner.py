@@ -22,6 +22,9 @@ class Runner:
         with open(config_path, 'r', encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
 
+        # 从 config_path 推导配置目录，不再依赖 _file_path hack
+        self.config_dir = os.path.dirname(os.path.abspath(config_path))
+
         self.device_serial = device_serial or self.config.get('devices', {}).get('serial')
         self.device = None
         self.step_results = []
@@ -33,14 +36,13 @@ class Runner:
         date_str = time.strftime("%Y-%m-%d")
         # Determine app name from config or use 'general'
         app_name = self.config.get('app', 'general')
-        base_dir = os.path.dirname(os.path.abspath(self.config.get('_file_path', __file__)))
-        output_dir = os.path.join(base_dir, "screenshots", date_str, app_name)
+        output_dir = os.path.join(self.config_dir, "screenshots", date_str, app_name)
         os.makedirs(output_dir, exist_ok=True)
         return output_dir
 
     def connect_device(self):
         """Connect to device."""
-        self.device = ops.connect(self.device_serial)
+        self.device = ops.connect_with_retry(self.device_serial)
         self.log(f"Connected to device: {self.device.serial}")
 
     def log(self, message, level="INFO"):
@@ -257,7 +259,7 @@ class Runner:
 
     def save_log(self):
         """Save execution log to file in logs subdirectory."""
-        log_dir = os.path.join(os.path.dirname(os.path.abspath(self.config.get('_file_path', __file__))), "screenshots", time.strftime("%Y-%m-%d"), "logs")
+        log_dir = os.path.join(self.config_dir, "screenshots", time.strftime("%Y-%m-%d"), "logs")
         os.makedirs(log_dir, exist_ok=True)
         log_path = os.path.join(log_dir, f"run_{time.strftime('%Y%m%d_%H%M%S')}.log")
 
