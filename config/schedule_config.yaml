@@ -4,16 +4,16 @@
 # 时间窗口配置（24小时制，HH:MM 格式）
 # 支持多个时间窗口，每个窗口独立执行
 time_windows:
-  - start: "08:30"
+  - start: "08:35"
     end: "08:45"
-  - start: "18:15"
-    end: "18:30"
+  - start: "18:30"
+    end: "19:00"
   # - start: "14:00"
   #   end: "17:00"
 
 # 目标 App 配置
 target:
-  app_package: "com.ss.android.lark体温"  # 要启动的 App 包名
+  app_package: "com.ss.android.lark"  # 要启动的 App 包名
 
 # 设备配置（可选，不填则自动检测）
 device:
