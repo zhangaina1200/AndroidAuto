@@ -1,0 +1,72 @@
+# Suunto 导航测试用例
+# 用法: python main.py --run suunto_cases/03_navigation.yaml
+
+app: com.stt.android.suunto.china
+description: 底部导航栏切换测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "启动应用"
+
+  - action: wait_time
+    seconds: 5
+    description: "等待应用完全加载"
+
+  # 处理弹窗
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  # TC05: 切换到首页仪表盘 - 使用坐标点击
+  - action: tap
+    x: 108
+    y: 2327
+    description: "点击首页 Tab"
+
+  - action: wait_time
+    seconds: 2
+
+  - action: screenshot
+    filename: 03_nav_01_dashboard.png
+
+  # TC06: 切换到日历视图
+  - action: tap
+    x: 324
+    y: 2327
+    description: "点击日历 Tab"
+
+  - action: wait_time
+    seconds: 2
+
+  - action: screenshot
+    filename: 03_nav_02_calendar.png
+
+  # TC07: 切换到探索/地图
+  - action: tap
+    x: 756
+    y: 2327
+    description: "点击探索 Tab"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 03_nav_03_explore.png
+
+  # TC08: 切换到个人中心
+  - action: tap
+    x: 972
+    y: 2327
+    description: "点击我的 Tab"
+
+  - action: wait_time
+    seconds: 2
+
+  - action: screenshot
+    filename: 03_nav_04_profile.png

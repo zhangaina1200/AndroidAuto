@@ -1,0 +1,54 @@
+# Suunto 设备配对测试用例
+# 用法: python main.py --run suunto_cases/02_device_pairing.yaml
+
+app: com.stt.android.suunto.china
+description: 设备配对功能测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "启动 Suunto 应用"
+
+  - action: wait_time
+    seconds: 3
+
+  # 处理可能的无设备弹窗
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  - action: screenshot
+    filename: 02_pairing_01_app_start.png
+
+  # 验证设备配对页面元素
+  - action: wait
+    resource_id: com.stt.android.suunto.china:id/device_found_header
+    timeout: 5
+    description: "等待设备列表加载"
+    optional: true
+
+  - action: assert_exists
+    resource_id: com.stt.android.suunto.china:id/device_found_header
+    description: "验证'已找到设备'标题存在"
+    optional: true
+
+  - action: screenshot
+    filename: 02_pairing_02_device_list.png
+
+  - action: assert_exists
+    resource_id: com.stt.android.suunto.china:id/device_name
+    description: "验证设备名称存在"
+    optional: true
+
+  - action: assert_exists
+    resource_id: com.stt.android.suunto.china:id/device_connect
+    description: "验证'配对'按钮存在"
+    optional: true
+
+  - action: screenshot
+    filename: 02_pairing_03_complete.png

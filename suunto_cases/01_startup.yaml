@@ -1,0 +1,36 @@
+# Suunto 启动测试用例
+# 用法: python main.py --run suunto_cases/01_startup.yaml
+
+app: com.stt.android.suunto.china
+description: 应用启动和无设备弹窗处理测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "TC01: 启动 Suunto 应用"
+
+  - action: wait_time
+    seconds: 3
+    description: "等待应用启动"
+
+  - action: screenshot
+    filename: 01_startup.png
+    description: "保存启动截图"
+
+  - action: assert_exists
+    resource_id: com.stt.android.suunto.china:id/bottomBarDashboard
+    description: "验证首页 Tab 存在"
+
+  # 处理可能的弹窗 - 使用坐标点击底部弹窗关闭按钮
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  - action: screenshot
+    filename: 02_after_popup.png
+    description: "保存弹窗处理后截图"

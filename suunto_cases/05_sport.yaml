@@ -1,0 +1,72 @@
+# Suunto 运动功能测试用例
+# 用法: python main.py --run suunto_cases/05_sport.yaml
+
+app: com.stt.android.suunto.china
+description: 运动记录和地图功能测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "启动应用"
+
+  - action: wait_time
+    seconds: 5
+    description: "等待应用完全加载"
+
+  # 处理弹窗
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  # TC12: 进入首页仪表盘
+  - action: tap
+    x: 108
+    y: 2327
+    description: "点击首页 Tab"
+
+  - action: wait_time
+    seconds: 2
+
+  - action: screenshot
+    filename: 05_sport_01_dashboard.png
+
+  # TC16: 进入探索页面测试地图
+  - action: tap
+    x: 756
+    y: 2327
+    description: "点击探索 Tab"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 05_sport_02_explore_map.png
+
+  # TC18: 进入历史记录
+  - action: tap
+    x: 540
+    y: 2327
+    description: "点击训练日记 Tab"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 05_sport_03_diary.png
+
+  # TC20: 进入用户中心
+  - action: tap
+    x: 972
+    y: 2327
+    description: "点击我的 Tab"
+
+  - action: wait_time
+    seconds: 2
+
+  - action: screenshot
+    filename: 05_sport_04_profile.png

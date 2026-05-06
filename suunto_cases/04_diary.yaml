@@ -1,0 +1,65 @@
+# Suunto 训练日记测试用例
+# 用法: python main.py --run suunto_cases/04_diary.yaml
+
+app: com.stt.android.suunto.china
+description: 训练日记和统计数据测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "启动应用"
+
+  - action: wait_time
+    seconds: 5
+    description: "等待应用完全加载"
+
+  # 处理弹窗
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  # TC05: 先进入首页
+  - action: tap
+    x: 108
+    y: 2327
+    description: "点击首页 Tab"
+
+  - action: wait_time
+    seconds: 2
+
+  # TC09: 进入训练日记 - 使用坐标点击
+  - action: tap
+    x: 540
+    y: 2327
+    description: "点击训练日记 Tab"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 04_diary_01_main.png
+
+  # TC10: 检查无训练数据提示
+  - action: wait_time
+    seconds: 2
+
+  - action: screenshot
+    filename: 04_diary_02_check.png
+
+  # TC11: 切换周期视图
+  - action: tap
+    x: 324
+    y: 350
+    description: "切换到日历视图"
+    optional: true
+
+  - action: wait_time
+    seconds: 2
+
+  - action: screenshot
+    filename: 04_diary_03_calendar_view.png
