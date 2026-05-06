@@ -35,7 +35,7 @@ class ScheduleConfig:
         self.time_windows = self.config.get('time_windows', self.DEFAULT_TIME_WINDOWS)
         if not self.time_windows:
             # 兼容旧配置格式
-            self.time_windows = [self.config.get('time_window', self.DEFAULT_TIME_WINDOWS[0])]
+            self.time_windows = [self.config.get('time_window', ScheduleConfig.DEFAULT_TIME_WINDOWS[0])]
 
         # 验证所有时间窗口
         self._validate_time_config()
@@ -62,8 +62,8 @@ class ScheduleConfig:
     def _validate_time_config(self):
         """验证时间配置格式"""
         for i, window in enumerate(self.time_windows):
-            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
-            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
+            start = window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['end'])
 
             start_h, start_m = self._parse_time(start)
             end_h, end_m = self._parse_time(end)
@@ -88,7 +88,7 @@ class ScheduleConfig:
         triggers = []
 
         for window in self.time_windows:
-            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
+            start = window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])
             start_h, start_m = self._parse_time(start)
             triggers.append((start_h, start_m, window))
 
@@ -113,8 +113,8 @@ class ScheduleConfig:
         current_minute = now.minute
 
         for window in self.time_windows:
-            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
-            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
+            start = window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['end'])
             start_h, start_m = self._parse_time(start)
             end_h, end_m = self._parse_time(end)
 
@@ -134,8 +134,8 @@ class ScheduleConfig:
             window_index = 0
 
         window = self.time_windows[window_index]
-        start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
-        end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
+        start = window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])
+        end = window.get('end', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['end'])
 
         start_h, start_m = self._parse_time(start)
         end_h, end_m = self._parse_time(end)
@@ -166,8 +166,8 @@ class ScheduleConfig:
         """获取所有时间窗口的小时范围列表"""
         hour_ranges = []
         for window in self.time_windows:
-            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
-            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
+            start = window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['end'])
             start_h, _ = self._parse_time(start)
             end_h, _ = self._parse_time(end)
             hour_ranges.append((start_h, end_h))
@@ -177,8 +177,8 @@ class ScheduleConfig:
         """获取所有时间窗口的分钟范围列表"""
         minute_ranges = []
         for window in self.time_windows:
-            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
-            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
+            start = window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['end'])
             _, start_m = self._parse_time(start)
             _, end_m = self._parse_time(end)
             minute_ranges.append((start_m, end_m))
@@ -254,10 +254,22 @@ class ExecutionLogger:
 class ScheduledAppLauncher:
     """定时启动 App 的执行器"""
 
-    def __init__(self, config):
+    def __init__(self, config, scheduler=None):
         self.config = config
         self.logger = ExecutionLogger(config.log_dir)
         self.device = None
+        self._scheduler = scheduler
+
+    def __getstate__(self):
+        """排除不可序列化的属性"""
+        state = self.__dict__.copy()
+        state.pop('_scheduler', None)  # 排除scheduler引用
+        return state
+
+    def __setstate__(self, state):
+        """恢复状态"""
+        self.__dict__.update(state)
+        self._scheduler = None
 
     def connect_device(self):
         """连接设备，支持重试"""
@@ -274,65 +286,114 @@ class ScheduledAppLauncher:
             print(f"[Scheduler] 设备连接失败: {e}")
             return False
 
-    def verify_app_launched(self, package, timeout=5):
-        """验证 App 是否成功启动"""
+    def verify_app_launched(self, package, timeout=10, max_retries=3):
+        """验证 App 是否成功启动（多次验证提高可靠性）"""
         if not self.device:
             return False
+
+        print(f"[Scheduler] 开始验证 App 启动: {package}")
+        for attempt in range(1, max_retries + 1):
+            try:
+                time.sleep(timeout)
+                current = ops.get_current_app(self.device)
+                print(f"[Scheduler] 验证尝试 {attempt}/{max_retries}: 当前前台应用={current}")
+                if current == package:
+                    print(f"[Scheduler] App 启动验证成功")
+                    return True
+            except Exception as e:
+                print(f"[Scheduler] 验证尝试 {attempt}/{max_retries} 失败: {e}")
+
+        # 最终检查：尝试截图并检查是否有错误弹窗
         try:
-            time.sleep(timeout)
-            current = ops.get_current_app(self.device)
-            return current == package
+            screenshot_path = ops.screenshot(self.device, os.path.join(self.config.log_dir, 'launch_verify.png'))
+            print(f"[Scheduler] 已保存启动验证截图: {screenshot_path}")
         except Exception as e:
-            print(f"[Scheduler] 验证失败: {e}")
-            return False
+            print(f"[Scheduler] 截图保存失败: {e}")
+
+        return False
 
     def execute_launch(self, planned_time):
-        """执行 App 启动"""
+        """执行 App 启动（带重试机制）"""
         actual_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         result = "FAIL"
         error_msg = None
 
-        try:
-            # 连接设备
-            if not self.connect_device():
-                error_msg = "设备连接失败"
-                raise Exception(error_msg)
-
-            # 启动 App
-            print(f"[Scheduler] 正在启动 App: {self.config.target_app}")
-            ops.launch_app(self.device, self.config.target_app)
-
-            # 验证
-            if self.verify_app_launched(self.config.target_app):
-                result = "SUCCESS"
-                print(f"[Scheduler] App 启动验证成功")
-
-                # 等待30秒后关闭 App
-                print(f"[Scheduler] 等待30秒后关闭 App...")
-                time.sleep(30)
-                print(f"[Scheduler] 正在关闭 App: {self.config.target_app}")
-                ops.stop_app(self.device, self.config.target_app)
-                print(f"[Scheduler] App 已关闭")
-            else:
-                error_msg = "App 启动后验证失败"
-                raise Exception(error_msg)
-
-        except Exception as e:
-            error_msg = str(e)
+        # 连接设备（带重试）
+        print(f"[Scheduler] 正在连接设备...")
+        if not self.connect_device():
+            error_msg = "设备连接失败"
+            self.logger.log_execution(planned_time, actual_time, self.config.target_app,
+                                      self.config.device_serial or "auto", result, error_msg)
             print(f"[Scheduler] 执行失败: {error_msg}")
+            return False
 
-        finally:
-            # 记录日志
-            self.logger.log_execution(
-                planned_time,
-                actual_time,
-                self.config.target_app,
-                self.config.device_serial or "auto",
-                result,
-                error_msg
-            )
+        # App 启动重试循环
+        max_retries = self.config.max_retries
+        retry_interval = self.config.retry_interval
 
-            print(f"[Scheduler] 执行记录: 计划={planned_time}, 实际={actual_time}, 结果={result}")
+        for attempt in range(1, max_retries + 1):
+            print(f"\n[Scheduler] === App 启动尝试 {attempt}/{max_retries} ===")
+
+            try:
+                # 启动 App
+                print(f"[Scheduler] 正在启动 App: {self.config.target_app}")
+                ops.launch_app(self.device, self.config.target_app)
+
+                # 验证（带截图）
+                if self.verify_app_launched(self.config.target_app, timeout=10, max_retries=3):
+                    result = "SUCCESS"
+                    print(f"[Scheduler] App 启动验证成功")
+
+                    # 截图确认
+                    screenshot_path = os.path.join(self.config.log_dir, f'success_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png')
+                    try:
+                        ops.screenshot(self.device, screenshot_path)
+                        print(f"[Scheduler] 已保存成功截图: {screenshot_path}")
+                    except Exception as e:
+                        print(f"[Scheduler] 截图保存失败: {e}")
+
+                    # 等待30秒后关闭 App
+                    print(f"[Scheduler] 等待30秒后关闭 App...")
+                    time.sleep(30)
+                    print(f"[Scheduler] 正在关闭 App: {self.config.target_app}")
+                    ops.stop_app(self.device, self.config.target_app)
+                    print(f"[Scheduler] App 已关闭")
+                    break  # 成功，退出重试循环
+                else:
+                    error_msg = f"App 启动尝试 {attempt} 验证失败"
+                    print(f"[Scheduler] {error_msg}")
+
+                    # 截图保存失败状态
+                    try:
+                        fail_shot_path = os.path.join(self.config.log_dir, f'fail_attempt_{attempt}.png')
+                        ops.screenshot(self.device, fail_shot_path)
+                        print(f"[Scheduler] 已保存失败截图: {fail_shot_path}")
+                    except Exception as e:
+                        print(f"[Scheduler] 失败截图保存失败: {e}")
+
+                    if attempt < max_retries:
+                        print(f"[Scheduler] 等待 {retry_interval} 秒后重试...")
+                        time.sleep(retry_interval)
+
+            except Exception as e:
+                error_msg = f"App 启动尝试 {attempt} 异常: {str(e)}"
+                print(f"[Scheduler] {error_msg}")
+                if attempt < max_retries:
+                    time.sleep(retry_interval)
+
+        # 记录日志
+        self.logger.log_execution(
+            planned_time,
+            actual_time,
+            self.config.target_app,
+            self.config.device_serial or "auto",
+            result,
+            error_msg
+        )
+
+        print(f"\n[Scheduler] 执行记录: 计划={planned_time}, 实际={actual_time}, 结果={result}")
+        if error_msg:
+            print(f"[Scheduler] 错误信息: {error_msg}")
 
         return result == "SUCCESS"
 
@@ -344,17 +405,99 @@ class ScheduledAppLauncher:
 
         if self.config.is_weekend(datetime.now()):
             print(f"[Scheduler] 跳过周末执行")
+            self._ensure_next_job_scheduled()
             return
 
         # 检查是否在时间窗口内
         if not self.config.is_within_time_window():
             print(f"[Scheduler] 当前不在时间窗口内，跳过执行")
+            self._ensure_next_job_scheduled()
             print(f"{'='*50}\n")
             return
 
         success = self.execute_launch(planned_time)
         print(f"[Scheduler] 执行{'成功' if success else '失败'}")
+        self._ensure_next_job_scheduled()
         print(f"{'='*50}\n")
+
+    def _ensure_next_job_scheduled(self):
+        """Watchdog: 确保下一个任务被正确安排"""
+        if self._scheduler is None:
+            return  # 没有scheduler引用，无法检查
+
+        try:
+            jobs = self._scheduler.get_jobs()
+            has_scheduled_job = any(job.id == 'scheduled_app_launch' for job in jobs)
+
+            if not has_scheduled_job:
+                print(f"[Watchdog] 检测到没有待执行的任务，正在重新安排...")
+                self._schedule_next_window()
+            else:
+                # 检查下一个任务时间是否合理
+                for job in jobs:
+                    if job.id == 'scheduled_app_launch' and job.next_run_time:
+                        next_run = job.next_run_time.replace(tzinfo=None)
+                        now = datetime.now()
+                        # 如果下一个任务在过去或超过24小时后，也重新安排
+                        if next_run < now or (next_run - now).total_seconds() > 86400:
+                            print(f"[Watchdog] 检测到任务时间异常 ({next_run})，正在重新安排...")
+                            self._schedule_next_window()
+        except Exception as e:
+            print(f"[Watchdog] 检查失败: {e}")
+
+    def _schedule_next_window(self):
+        """安排下一个窗口的执行（实例方法，供内部调用）"""
+        from apscheduler.triggers.date import DateTrigger
+
+        now = datetime.now()
+
+        for window in self.config.time_windows:
+            start = window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])
+            end = window.get('end', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['end'])
+            start_h, start_m = self.config._parse_time(start)
+            end_h, end_m = self.config._parse_time(end)
+
+            start_total = start_h * 60 + start_m
+            end_total = end_h * 60 + end_m
+            now_total = now.hour * 60 + now.minute
+
+            # 检查是否在窗口内（窗口开始后、结束前）
+            if start_total <= now_total <= end_total:
+                # 在窗口内，随机选择执行时间
+                future_minutes = now_total + 2
+                if future_minutes < end_total:
+                    random_minutes = random.randint(future_minutes, end_total - 1)
+                else:
+                    random_minutes = random.randint(start_total, end_total - 1)
+
+                exec_hour = random_minutes // 60
+                exec_minute = random_minutes % 60
+                exec_time = now.replace(hour=exec_hour, minute=exec_minute, second=0, microsecond=0)
+
+                trigger = DateTrigger(run_date=exec_time)
+
+                self._scheduler.add_job(
+                    self.scheduled_job,
+                    trigger,
+                    id='scheduled_app_launch',
+                    name='定时启动 App',
+                    replace_existing=True
+                )
+                print(f"[Watchdog] 已安排执行时间: {exec_time.strftime('%H:%M')}")
+                return
+
+        # 不在任何窗口内，安排下一个窗口的起始时间
+        next_time = self.config.get_next_window_start()
+        trigger = DateTrigger(run_date=next_time)
+
+        self._scheduler.add_job(
+            self.scheduled_job,
+            trigger,
+            id='scheduled_app_launch',
+            name='定时启动 App',
+            replace_existing=True
+        )
+        print(f"[Watchdog] 已安排下一个窗口开始: {next_time.strftime('%H:%M')}")
 
     def print_status(self):
         """打印当前状态"""
@@ -366,7 +509,7 @@ class ScheduledAppLauncher:
 
         window_descriptions = []
         for window in self.config.time_windows:
-            window_descriptions.append(f"{window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])}~{window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])}")
+            window_descriptions.append(f"{window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])}~{window.get('end', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['end'])}")
         print(f"时间窗口: {', '.join(window_descriptions)}")
         print(f"最大重试: {self.config.max_retries} 次")
         print(f"重试间隔: {self.config.retry_interval} 秒")
@@ -400,9 +543,6 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
 
     config = load_config(config_path)
 
-    launcher = ScheduledAppLauncher(config)
-    launcher.print_status()
-
     # 创建调度器，使用 SQLite 持久化任务
     db_path = os.path.join(config.log_dir, 'scheduler_jobs.db')
     jobstores = {
@@ -411,64 +551,16 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
 
     scheduler = BlockingScheduler(jobstores=jobstores)
 
+    # 创建launcher并传入scheduler引用
+    launcher = ScheduledAppLauncher(config, scheduler)
+    launcher.print_status()
+
     # 显示所有时间窗口
     window_descriptions = []
     for window in config.time_windows:
-        window_descriptions.append(f"{window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])}~{window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])}")
+        window_descriptions.append(f"{window.get('start', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['start'])}~{window.get('end', ScheduleConfig.DEFAULT_TIME_WINDOWS[0]['end'])}")
 
     print(f"[Scheduler] 时间窗口: {', '.join(window_descriptions)}")
-
-    def schedule_next_window():
-        """安排下一个窗口的执行"""
-        now = datetime.now()
-
-        for window in config.time_windows:
-            start = window.get('start', self.DEFAULT_TIME_WINDOWS[0]['start'])
-            end = window.get('end', self.DEFAULT_TIME_WINDOWS[0]['end'])
-            start_h, start_m = config._parse_time(start)
-            end_h, end_m = config._parse_time(end)
-
-            start_total = start_h * 60 + start_m
-            end_total = end_h * 60 + end_m
-            now_total = now.hour * 60 + now.minute
-
-            # 检查是否在窗口内（窗口开始后、结束前）
-            if start_total <= now_total <= end_total:
-                # 在窗口内，随机选择执行时间
-                random_minutes = random.randint(start_total, end_total)
-                exec_hour = random_minutes // 60
-                exec_minute = random_minutes % 60
-
-                # 如果随机时间已过，选择窗口开始后但不太早的时间
-                if exec_hour * 60 + exec_minute <= now_total:
-                    exec_hour = now.hour
-                    exec_minute = now.minute + 2 if now.minute < 58 else 59
-
-                exec_time = now.replace(hour=exec_hour, minute=exec_minute, second=0, microsecond=0)
-                trigger = DateTrigger(run_date=exec_time)
-
-                scheduler.add_job(
-                    launcher.scheduled_job,
-                    trigger,
-                    id='scheduled_app_launch',
-                    name='定时启动 App',
-                    replace_existing=True
-                )
-                print(f"[Scheduler] 已安排执行时间: {exec_time.strftime('%H:%M')}")
-                return
-
-        # 不在任何窗口内，安排下一个窗口的起始时间
-        next_time = config.get_next_window_start()
-        trigger = DateTrigger(run_date=next_time)
-
-        scheduler.add_job(
-            launcher.scheduled_job,
-            trigger,
-            id='scheduled_app_launch',
-            name='定时启动 App',
-            replace_existing=True
-        )
-        print(f"[Scheduler] 已安排下一个窗口开始: {next_time.strftime('%H:%M')}")
 
     def wrap_scheduled_job():
         """包装的 scheduled_job，执行完成后自动安排下一个"""
@@ -476,10 +568,10 @@ def start_scheduler(config_path='config/schedule_config.yaml'):
         launcher.scheduled_job()
 
         # 执行完成后，安排下一个窗口
-        schedule_next_window()
+        launcher._schedule_next_window()
 
     # 初始安排
-    schedule_next_window()
+    launcher._schedule_next_window()
 
     print("[Scheduler] 调度器已启动")
     print(f"[Scheduler] 执行周期: 周一到周五 {', '.join(window_descriptions)}")
