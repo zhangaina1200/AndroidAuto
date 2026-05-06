@@ -1,0 +1,95 @@
+# Suunto 日历视图测试
+# 用法: python main.py --run suunto_cases/07_calendar_view.yaml
+
+app: com.stt.android.suunto.china
+description: 日历视图探索测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "启动Suunto应用"
+
+  - action: wait_time
+    seconds: 3
+    description: "等待应用启动"
+
+  # 关闭弹窗
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  # 点击日历Tab
+  - action: tap
+    x: 324
+    y: 2327
+    description: "点击日历Tab"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 07_calendar_overview.png
+    description: "日历概览"
+
+  # TC01: 点击今天的日期查看详情
+  - action: tap
+    x: 540
+    y: 500
+    description: "点击今天日期"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 07_day_detail.png
+    description: "日详情页"
+
+  - action: swipe_up
+    distance: 400
+    description: "下滑查看更多"
+
+  - action: screenshot
+    filename: 07_day_detail_scroll.png
+    description: "日详情续"
+
+  - action: press_back
+    description: "返回日历"
+
+  - action: wait_time
+    seconds: 2
+
+  # TC02: 左右滑动切换月份
+  - action: swipe_left
+    x1: 200
+    y1: 500
+    x2: 800
+    y2: 500
+    duration: 0.5
+    description: "左滑切换到下个月"
+
+  - action: wait_time
+    seconds: 1
+
+  - action: screenshot
+    filename: 07_calendar_next_month.png
+    description: "下个月日历"
+
+  - action: swipe_right
+    x1: 800
+    y1: 500
+    x2: 200
+    y2: 500
+    duration: 0.5
+    description: "右滑返回当月"
+
+  - action: wait_time
+    seconds: 1
+
+  - action: screenshot
+    filename: 07_calendar_back.png
+    description: "当月日历"

@@ -1,0 +1,91 @@
+# Suunto 我的页面测试
+# 用法: python main.py --run suunto_cases/09_profile_tab.yaml
+
+app: com.stt.android.suunto.china
+description: 我的页面探索测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "启动Suunto应用"
+
+  - action: wait_time
+    seconds: 3
+    description: "等待应用启动"
+
+  # 关闭弹窗
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  # 点击我的Tab
+  - action: tap
+    x: 972
+    y: 2327
+    description: "点击我的Tab"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 09_profile_top.png
+    description: "我的页面顶部"
+
+  # TC01: 查看设备信息
+  - action: tap
+    x: 540
+    y: 900
+    description: "点击设备"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 09_device_info.png
+    description: "设备信息页"
+
+  - action: press_back
+    description: "返回我的页面"
+
+  - action: wait_time
+    seconds: 2
+
+  # TC02: 查看锻炼记录
+  - action: swipe_up
+    distance: 200
+    description: "下滑找到锻炼记录"
+
+  - action: tap
+    x: 540
+    y: 1300
+    description: "点击锻炼记录"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 09_workout_records.png
+    description: "锻炼记录页"
+
+  - action: press_back
+    description: "返回我的页面"
+
+  - action: wait_time
+    seconds: 2
+
+  # TC03: 下滑查看底部设置
+  - action: swipe_up
+    distance: 800
+    description: "下滑查看底部"
+
+  - action: wait_time
+    seconds: 1
+
+  - action: screenshot
+    filename: 09_profile_bottom.png
+    description: "我的页面底部"

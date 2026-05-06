@@ -134,6 +134,18 @@ def swipe_down(device, distance=500, duration=0.5):
     device.device.swipe(w // 2, h // 4, w // 2, h * 3 // 4, duration=duration)
 
 
+def swipe_left(device, distance=500, duration=0.5):
+    """Swipe left on screen."""
+    w, h = device.device.info['displayWidth'], device.device.info['displayHeight']
+    device.device.swipe(w * 3 // 4, h // 2, w // 4, h // 2, duration=duration)
+
+
+def swipe_right(device, distance=500, duration=0.5):
+    """Swipe right on screen."""
+    w, h = device.device.info['displayWidth'], device.device.info['displayHeight']
+    device.device.swipe(w // 4, h // 2, w * 3 // 4, h // 2, duration=duration)
+
+
 # ============ Text Input ============
 
 def input_text(device, text, text_match=None, resource_id=None, clear_first=True):

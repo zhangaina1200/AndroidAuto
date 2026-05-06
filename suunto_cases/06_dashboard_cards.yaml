@@ -1,0 +1,118 @@
+# Suunto 仪表盘卡片探索测试
+# 用法: python main.py --run suunto_cases/06_dashboard_cards.yaml
+
+app: com.stt.android.suunto.china
+description: Dashboard各卡片探索测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "启动Suunto应用"
+
+  - action: wait_time
+    seconds: 3
+    description: "等待应用启动"
+
+  # 关闭弹窗
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  # 截图初始状态
+  - action: screenshot
+    filename: 06_dashboard_top.png
+    description: "截取Dashboard顶部"
+
+  # TC01: 点击今日活动卡片
+  - action: tap
+    x: 540
+    y: 380
+    description: "点击今日活动卡片"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 06_activity_card.png
+    description: "活动详情页"
+
+  - action: press_back
+    description: "返回Dashboard"
+
+  - action: wait_time
+    seconds: 2
+
+  # TC02: 点击睡眠卡片
+  - action: tap
+    x: 540
+    y: 520
+    description: "点击睡眠卡片"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 06_sleep_card.png
+    description: "睡眠详情页"
+
+  - action: swipe_up
+    distance: 400
+    description: "下滑查看更多睡眠数据"
+
+  - action: screenshot
+    filename: 06_sleep_detail.png
+    description: "睡眠详情续"
+
+  - action: press_back
+    description: "返回Dashboard"
+
+  - action: wait_time
+    seconds: 2
+
+  # TC03: 下滑查看更多卡片
+  - action: swipe_up
+    distance: 500
+    description: "下滑查看训练准备"
+
+  - action: wait_time
+    seconds: 1
+
+  - action: screenshot
+    filename: 06_dashboard_mid.png
+    description: "Dashboard中部"
+
+  # TC04: 点击训练准备卡片
+  - action: tap
+    x: 540
+    y: 1650
+    description: "点击训练准备卡片"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 06_training_readiness.png
+    description: "训练准备详情"
+
+  - action: press_back
+    description: "返回Dashboard"
+
+  - action: wait_time
+    seconds: 2
+
+  # TC05: 继续下滑查看底部卡片
+  - action: swipe_up
+    distance: 600
+    description: "下滑查看底部"
+
+  - action: wait_time
+    seconds: 1
+
+  - action: screenshot
+    filename: 06_dashboard_bottom.png
+    description: "Dashboard底部"

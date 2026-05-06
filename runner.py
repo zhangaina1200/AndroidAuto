@@ -25,6 +25,10 @@ class Runner:
         # 从 config_path 推导配置目录，不再依赖 _file_path hack
         self.config_dir = os.path.dirname(os.path.abspath(config_path))
 
+        # 如果是 suunto_cases 目录下的配置，改为输出到 reports 子目录
+        if 'suunto_cases' in self.config_dir:
+            self.config_dir = os.path.join(self.config_dir, 'reports')
+
         self.device_serial = device_serial or self.config.get('devices', {}).get('serial')
         self.device = None
         self.step_results = []
@@ -137,6 +141,12 @@ class Runner:
 
             elif action == 'swipe_down':
                 return ops.swipe_down(self.device, step.get('distance', 500))
+
+            elif action == 'swipe_left':
+                return ops.swipe_left(self.device, step.get('distance', 500))
+
+            elif action == 'swipe_right':
+                return ops.swipe_right(self.device, step.get('distance', 500))
 
             elif action == 'input_text':
                 return ops.input_text(

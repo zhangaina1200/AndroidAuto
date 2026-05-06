@@ -1,0 +1,74 @@
+# Suunto 运动/探索Tab测试
+# 用法: python main.py --run suunto_cases/08_explore_tab.yaml
+
+app: com.stt.android.suunto.china
+description: 探索Tab测试
+
+steps:
+  - action: launch_app
+    package: com.stt.android.suunto.china
+    description: "启动Suunto应用"
+
+  - action: wait_time
+    seconds: 3
+    description: "等待应用启动"
+
+  # 关闭弹窗
+  - action: tap
+    x: 894
+    y: 1713
+    description: "关闭弹窗"
+    optional: true
+
+  - action: wait_time
+    seconds: 1
+
+  # 点击探索Tab
+  - action: tap
+    x: 756
+    y: 2327
+    description: "点击探索Tab"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 08_explore_tab.png
+    description: "探索Tab初始"
+
+  # TC01: 点击附近活动卡片
+  - action: tap
+    x: 540
+    y: 1300
+    description: "点击附近活动"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 08_nearby_activities.png
+    description: "附近活动页面"
+
+  # 检查GPS权限提示
+  - action: press_back
+    description: "返回探索Tab"
+
+  - action: wait_time
+    seconds: 2
+
+  # TC02: 点击精彩跑步路线
+  - action: swipe_up
+    distance: 300
+    description: "下滑查看更多"
+
+  - action: tap
+    x: 540
+    y: 1800
+    description: "点击精彩跑步路线"
+
+  - action: wait_time
+    seconds: 3
+
+  - action: screenshot
+    filename: 08_routes.png
+    description: "跑步路线页面"
